@@ -1,0 +1,35 @@
+# TEMPLATE -- qmd-checks. Copied into a project by install.sh only when the
+# project has no style_terms.tsv of its own. Replace the example rules below
+# with your project's house terminology; they are illustrations, not defaults
+# anyone should inherit.
+#
+# House terminology, read by check_terms.sh. Wire that script into a
+# PostToolUse hook (.claude/settings.json) and drift gets caught in the same
+# edit that introduces it.
+#
+# Format: TAB-separated. pattern <TAB> replacement <TAB> skip-line-if <TAB> note
+#   pattern        Perl regex. $1..$9 in the replacement refer to its captures.
+#   replacement    Literal text plus $N backreferences.
+#   skip-line-if   Perl regex; if the raw line matches, this rule is skipped
+#                  there. Usually left empty -- the structural exclusions below
+#                  already cover most false positives.
+#   note           Why. Shown in the checker's output.
+#
+# Leave skip-line-if empty by writing two tabs in a row. No non-empty field may
+# begin or end with a space, since an editor that trims trailing whitespace
+# would silently break the rule. Where a space is load-bearing, assert it with a
+# lookaround instead of consuming it -- see the dash rule.
+#
+# The checker never looks at fenced chunk bodies (except `#|` option lines,
+# which are prose), inline `code` spans, $math$, or HTML comments. That is what
+# keeps a term that is also a column name or a function name out of scope, so
+# most rules need no skip-line-if of their own.
+#
+# Adding a rule: put it here, run `check_terms.sh --all` to see the damage,
+# then `--fix`. Do not add a convention a regex can't decide.
+
+# --- Example rules (delete or replace) ---------------------------------------
+(?<= )--(?= )	---		house em dash is ---, not --
+\b[Zz]ip ?code(s?)\b	ZIP code$1		ZIP code, never zipcode or zip code
+\bboxplot(s?)\b	box plot$1		box plot, two words
+\bZ-score(s?)\b	z-score$1	^#{1,6}\s	lowercase z-score; a heading may capitalize it sentence-initially

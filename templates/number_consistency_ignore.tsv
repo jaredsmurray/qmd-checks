@@ -1,0 +1,25 @@
+# TEMPLATE -- qmd-checks. Copied into a project by install.sh only when the
+# project has no number_consistency_ignore.tsv of its own. It ships with the
+# header row and no rulings; every suppression below the header should be one
+# your project actually adjudicated.
+#
+# Adjudicated-as-fine precision differences, read by check_number_consistency.R.
+#
+# A quantity shown at two precisions is usually drift, but not always: an
+# equation may carry more decimals than the sentence that paraphrases it, on
+# purpose. Once a pair has been ruled on, record it here and it stays quiet.
+#
+# The file also silences RECONSTRUCTIBLE FIGURE VALUE findings, which flag a
+# risk rather than a proven mismatch: the checker reads source and never
+# evaluates, so it cannot tell whether the arithmetic closes at the displayed
+# precision. Suppress one only after checking the rendered numbers, and say in
+# the note what they were -- if the data behind them is ever refreshed, that
+# record is the only way to know the closure still holds.
+#
+# file	the repo-relative .qmd
+# expr	the expression exactly as the checker prints it after PRECISION DRIFT:
+#     	or RECONSTRUCTIBLE FIGURE VALUE:
+# note	why this one is deliberate -- required, so a future reader can re-open it
+#
+# Tab-separated. Lines starting with # are ignored.
+file	expr	note
