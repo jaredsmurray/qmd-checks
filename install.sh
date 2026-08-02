@@ -119,7 +119,7 @@ else
     echo "describe: $describe"
     echo "sha: $sha"
     echo "installed: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-    echo "source: $TOOLKIT"
+    echo "source: qmd-checks"   # repo name only; a local path here would leak into public repos
     echo ""
     echo "# Vendored copy. It does not update itself; re-run the toolkit's"
     echo "# install.sh to refresh. Config files are project-owned and are never"
