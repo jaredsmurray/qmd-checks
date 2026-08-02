@@ -20,11 +20,48 @@
 
 set -uo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RULES="$REPO/style_terms.tsv"
+# Project root. Installed toolkit copies live at <root>/tools/checks/, the
+# legacy in-repo layout at <root>/tools/; QMD_CHECKS_ROOT overrides both.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "${QMD_CHECKS_ROOT:-}" ]; then
+  REPO="$(cd "$QMD_CHECKS_ROOT" && pwd)"
+elif [ "$(basename "$SCRIPT_DIR")" = checks ]; then
+  REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
+else
+  REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
-# Generated wrappers, not authored prose: sap_*.qmd come from webapps/*/app.R.
-EXCLUDE_RE='^(sap_sampling_app|sap_bootstrap_app)\.qmd$'
+# Scan-set declaration. Defaults reproduce the original book behavior; a
+# project overrides them in tools/checks.conf (KEY=VALUE, shell syntax).
+#   TERMS_RULES       rules TSV, relative to the project root
+#   TERMS_GLOBS       space-separated globs (relative to root) for --all/--fix
+#   TERMS_EXCLUDE_RE  basename regex to skip (generated files etc.)
+TERMS_RULES="style_terms.tsv"
+TERMS_GLOBS="*.qmd"
+TERMS_EXCLUDE_RE='^(sap_sampling_app|sap_bootstrap_app)\.qmd$'
+[ -f "$REPO/tools/checks.conf" ] && . "$REPO/tools/checks.conf"
+
+RULES="$REPO/$TERMS_RULES"
+EXCLUDE_RE="$TERMS_EXCLUDE_RE"
+
+# Expand the declared globs into the default scan set (sorted, deduped).
+# The subshell runs the word-split of TERMS_GLOBS under `set -f`: without it
+# the shell would glob-expand the patterns against the CALLER'S cwd before the
+# loop ever sees them.
+scan_set() {
+  (
+    set -f
+    for g in $TERMS_GLOBS; do
+      set +f
+      for f in "$REPO"/$g; do
+        [ -f "$f" ] || continue
+        echo "$(basename "$f")" | grep -Eq "$EXCLUDE_RE" && continue
+        printf '%s\n' "$f"
+      done
+      set -f
+    done
+  ) | sort -u
+}
 
 usage() {
   echo "usage: tools/check_terms.sh --all [files...] | --fix [files...] | --hook" >&2
@@ -62,20 +99,20 @@ if [ "$mode" = hook ]; then
   fi
   [ -n "${fp:-}" ] || exit 0
   case "$fp" in *.qmd) ;; *) exit 0 ;; esac
-  # Chapters live at the repo root. Decks, problem sets and supplements are
-  # separate projects with their own conventions.
-  [ "$(dirname "$fp")" = "$REPO" ] || exit 0
   [ -f "$fp" ] || exit 0
-  echo "$(basename "$fp")" | grep -Eq "$EXCLUDE_RE" && exit 0
-  files=("$fp")
+  # In scope only if the declared scan set contains it. Decks, problem sets
+  # and supplements are separate projects with their own conventions (or their
+  # own checks.conf).
+  abs="$(cd "$(dirname "$fp")" && pwd)/$(basename "$fp")"
+  scan_set | grep -Fxq "$abs" || exit 0
+  files=("$abs")
   mode=check
 elif [ $# -gt 0 ]; then
   files=("$@")
 else
   while IFS= read -r f; do
-    echo "$(basename "$f")" | grep -Eq "$EXCLUDE_RE" && continue
     files+=("$f")
-  done < <(find "$REPO" -maxdepth 1 -name '*.qmd' | sort)
+  done < <(scan_set)
 fi
 
 [ ${#files[@]} -gt 0 ] || exit 0

@@ -129,13 +129,11 @@ else
 fi
 
 # --- Entry points ------------------------------------------------------------
-# The engines resolve their config and their --all scan set relative to their
-# own parent directory (script dir + "/.."), so a copy invoked as
-# tools/checks/check_terms.sh would look for config under tools/, not the
-# project root. These symlinks give the original invocation path back:
-# tools/check_terms.sh -> checks/check_terms.sh resolves the project root
-# exactly as the monorepo original does. They go away once the engines grow the
-# --files/--config parameterization.
+# The engines self-locate the project root from tools/checks/ (and honor
+# QMD_CHECKS_ROOT), so these symlinks are pure invocation-path compatibility:
+# scripts and hooks written against the legacy tools/check_*.sh paths keep
+# working unchanged. New projects can pass --no-entrypoints and call
+# tools/checks/* directly.
 
 if [ "$entrypoints" = true ]; then
   for e in "${ENGINES[@]}"; do
@@ -170,6 +168,7 @@ seed() {  # seed <template> <project-relative destination>
 if [ "$seed_config" = true ]; then
   seed style_terms.tsv                style_terms.tsv
   seed number_consistency_ignore.tsv  tools/number_consistency_ignore.tsv
+  seed checks.conf                    tools/checks.conf
 fi
 
 # --- Optional PostToolUse hook snippet ---------------------------------------

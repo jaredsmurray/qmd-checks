@@ -61,7 +61,37 @@ args <- commandArgs(trailingOnly = TRUE)
 
 script_path <- sub("^--file=", "",
                    grep("^--file=", commandArgs(FALSE), value = TRUE)[1])
-REPO <- normalizePath(file.path(dirname(script_path), ".."))
+script_dir <- dirname(normalizePath(script_path))
+
+# Project root. Installed toolkit copies live at <root>/tools/checks/, the
+# legacy in-repo layout at <root>/tools/; QMD_CHECKS_ROOT overrides both.
+REPO <- Sys.getenv("QMD_CHECKS_ROOT", "")
+REPO <- if (nzchar(REPO)) {
+  normalizePath(REPO)
+} else if (basename(script_dir) == "checks") {
+  normalizePath(file.path(script_dir, "..", ".."))
+} else {
+  normalizePath(file.path(script_dir, ".."))
+}
+
+# Scan-set declaration: optional tools/checks.conf (KEY=VALUE, shell syntax,
+# shared with the other engines). Defaults reproduce the original book
+# behavior: chapters at the root plus the slides/ subproject.
+read_conf <- function(path) {
+  if (!file.exists(path)) return(list())
+  ln <- readLines(path, warn = FALSE)
+  ln <- ln[grepl("^[A-Z_]+=", ln)]
+  kv <- regmatches(ln, regexec("^([A-Z_]+)=(.*)$", ln))
+  out <- list()
+  for (m in kv) out[[m[2]]] <- gsub("^[\"']|[\"']$", "", m[3])
+  out
+}
+conf <- read_conf(file.path(REPO, "tools", "checks.conf"))
+conf_or <- function(key, default) {
+  if (!is.null(conf[[key]]) && nzchar(conf[[key]])) conf[[key]] else default
+}
+NUMCONS_GLOBS <- strsplit(conf_or("NUMCONS_GLOBS", "*.qmd slides/*.qmd"),
+                          "[[:space:]]+")[[1]]
 
 usage <- function() {
   cat("usage: tools/check_number_consistency.R --all | --hook | <file.qmd> ...\n",
@@ -74,7 +104,8 @@ if (length(args) == 0) usage()
 hook_mode <- identical(args[1], "--hook")
 
 # Generated wrappers, not authored prose: sap_*.qmd come from webapps/*/app.R.
-EXCLUDE_RE <- "^(sap_sampling_app|sap_bootstrap_app)\\.qmd$"
+EXCLUDE_RE <- conf_or("NUMCONS_EXCLUDE_RE",
+                      "^(sap_sampling_app|sap_bootstrap_app)\\.qmd$")
 
 if (hook_mode) {
   # PostToolUse hands us the tool call as JSON on stdin. Anything that is not a
@@ -97,8 +128,8 @@ if (hook_mode) {
   if (grepl(EXCLUDE_RE, basename(fp))) quit(status = 0)
   files <- fp
 } else if (identical(args[1], "--all")) {
-  files <- c(list.files(REPO, pattern = "\\.qmd$", full.names = TRUE),
-             list.files(file.path(REPO, "slides"), pattern = "\\.qmd$", full.names = TRUE))
+  files <- unlist(lapply(NUMCONS_GLOBS, function(g) Sys.glob(file.path(REPO, g))))
+  files <- unique(files[file.exists(files)])
   files <- files[!grepl(EXCLUDE_RE, basename(files))]
   files <- files[!grepl("^_", basename(files))]
 } else {
@@ -114,7 +145,8 @@ out <- if (hook_mode) stderr() else stdout()
 
 # --- Suppressions ------------------------------------------------------------
 
-IGNORE_PATH <- file.path(REPO, "tools", "number_consistency_ignore.tsv")
+IGNORE_PATH <- file.path(REPO, conf_or("NUMCONS_IGNORE",
+                                       "tools/number_consistency_ignore.tsv"))
 ignores <- if (file.exists(IGNORE_PATH)) {
   z <- try(read.delim(IGNORE_PATH, comment.char = "#", stringsAsFactors = FALSE),
            silent = TRUE)

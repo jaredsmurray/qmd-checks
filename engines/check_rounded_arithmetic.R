@@ -52,9 +52,29 @@ if (length(args) == 0) {
 }
 
 if (identical(args, "--all")) {
-  root <- normalizePath(file.path(dirname(sub("--file=", "", grep("^--file=",
-            commandArgs(FALSE), value = TRUE)[1])), ".."))
-  files <- list.files(file.path(root, "_book"), pattern = "\\.html$",
+  # Project root: installed toolkit copies live at <root>/tools/checks/, the
+  # legacy in-repo layout at <root>/tools/; QMD_CHECKS_ROOT overrides both.
+  script_dir <- dirname(normalizePath(sub("--file=", "", grep("^--file=",
+                  commandArgs(FALSE), value = TRUE)[1])))
+  root <- Sys.getenv("QMD_CHECKS_ROOT", "")
+  root <- if (nzchar(root)) {
+    normalizePath(root)
+  } else if (basename(script_dir) == "checks") {
+    normalizePath(file.path(script_dir, "..", ".."))
+  } else {
+    normalizePath(file.path(script_dir, ".."))
+  }
+  # Rendered-output dir from tools/checks.conf (ARITH_HTML_DIR), default _book.
+  html_dir <- "_book"
+  conf_path <- file.path(root, "tools", "checks.conf")
+  if (file.exists(conf_path)) {
+    ln <- grep("^ARITH_HTML_DIR=", readLines(conf_path, warn = FALSE), value = TRUE)
+    if (length(ln)) {
+      v <- gsub("^[\"']|[\"']$", "", sub("^ARITH_HTML_DIR=", "", ln[1]))
+      if (nzchar(v)) html_dir <- v
+    }
+  }
+  files <- list.files(file.path(root, html_dir), pattern = "\\.html$",
                       recursive = TRUE, full.names = TRUE)
 } else {
   files <- args

@@ -28,10 +28,29 @@ The split is the whole point of the package:
   the project has adjudicated as deliberate, plus the note explaining each
   ruling; and any terminology ledger or review record that sits beside them.
 
-`templates/` holds *seeds* for the two config files: the format documentation
+`templates/` holds *seeds* for the config files: the format documentation
 and a handful of illustrative rows, marked as templates in their own header
 comments. They are a starting point, not a shared default — replace the example
 rules with your own.
+
+### Declaring the scan set: `tools/checks.conf`
+
+Each project declares *which files its checks scan* in an optional
+`tools/checks.conf` (plain shell `KEY=VALUE`; seeded from `templates/`).
+`TERMS_GLOBS` / `TERMS_RULES` / `TERMS_EXCLUDE_RE` drive `check_terms.sh`;
+`NUMCONS_GLOBS` / `NUMCONS_EXCLUDE_RE` / `NUMCONS_IGNORE` drive
+`check_number_consistency.R`; `ARITH_HTML_DIR` points
+`check_rounded_arithmetic.R --all` at the rendered output. Globs are relative
+to the project root. With no config file the engines fall back to built-in
+defaults that reproduce the original book repo's behavior (root `*.qmd`,
+`slides/*.qmd` for number consistency, `_book/` for arithmetic).
+
+Engines locate their project root from where they're installed —
+`tools/checks/` (toolkit layout) or `tools/` (legacy in-repo layout) — and
+`QMD_CHECKS_ROOT` overrides the discovery, which is also how you point an
+engine at a project it isn't installed in. Explicit file arguments always
+bypass the declared scan set; hook mode treats "in the scan set" as "in
+scope".
 
 ## Distribution: vendored installer
 
