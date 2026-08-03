@@ -82,7 +82,7 @@ sha="$(git -C "$TOOLKIT" rev-parse ${ref:+"$ref"} 2>/dev/null || echo unknown)"
   [ -z "$dirty" ] || describe="$describe-dirty"
 }
 
-ENGINES=(check_rounded_arithmetic.R check_number_consistency.R check_terms.sh)
+ENGINES=(check_rounded_arithmetic.R check_number_consistency.R check_terms.sh check_unicode_escapes.sh)
 SKILL=slide-render-check
 
 for e in "${ENGINES[@]}"; do
